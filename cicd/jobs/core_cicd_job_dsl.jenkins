@@ -1,0 +1,29 @@
+#!/usr/bin/env groovy
+
+pipelineJob('core_cicd') {
+    displayName('core/core-app')
+
+    logRotator {
+        numToKeep(10)
+        daysToKeep(14)
+        artifactNumToKeep(10)
+        artifactDaysToKeep(14)
+    }
+    properties {
+        disableConcurrentBuilds()
+    }
+    definition {
+        cpsScm {
+            lightweight(true)
+            scm {
+                git {
+                    remote {
+                        url('ssh://git@bitbucket.org/scholastic/crmbf-us-eks-jenkins-pipelines.git')
+                    }
+                    branches('*/master')
+                }
+            }
+            scriptPath('cicd/pipelines/bfcemailnotification_pipeline.jenkins')
+        }
+    }
+}
