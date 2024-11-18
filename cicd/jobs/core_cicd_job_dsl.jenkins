@@ -18,7 +18,7 @@ pipelineJob('core_cicd') {
             scm {
                 git {
                     remote {
-                        url('ssh://git@bitbucket.org/scholastic/crmbf-us-eks-jenkins-pipelines.git')
+                        url('git@github.com:Sandeepkulkarnib/jenkins-pipelines.git')
                     }
                     branches('*/master')
                 }
