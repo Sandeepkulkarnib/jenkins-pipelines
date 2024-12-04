@@ -23,7 +23,7 @@ pipelineJob('core_cicd') {
                     branches('*/master')
                 }
             }
-            scriptPath('cicd/pipelines/bfcemailnotification_pipeline.jenkins')
+            scriptPath('cicd/pipelines/core_cicd_pipeline.jenkins')
         }
     }
 }
