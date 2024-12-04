@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy
 
-node('jenkins-agent') {
+node('Built-In Node') {
   pipelineConfigs = [
     'businessUnit': 'core',
     'appName': 'bfcemailnotification',
