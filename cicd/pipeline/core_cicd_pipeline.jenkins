@@ -12,8 +12,8 @@ pipeline {
         DOCKER_CONTAINER_NAME = "pf-trust-ui"
 
         // Hardcoded AWS Keys (Replace with your keys)
-        AWS_ACCESS_KEY_ID = "AKIAZUPMT3Z2JMCXLD6X"
-        AWS_SECRET_ACCESS_KEY = "CQEewSHuF5hczFF4+jm6N0iDl6MMwrCr0dcRnW0/"
+        AWS_ACCESS_KEY_ID = "XXXXXXXXXX"
+        AWS_SECRET_ACCESS_KEY = "XXXXXXX"
         AWS_REGION = "us-east-1"
     }
 
