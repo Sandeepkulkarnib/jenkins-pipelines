@@ -1,36 +1,85 @@
-#!/usr/bin/env groovy
+pipeline {
+    agent any
 
-node('jenkins-agent') {
-  pipelineConfigs = [
-    'businessUnit': 'core',
-    'appName': 'bfcemailnotification',
-    'eksNamespacePrefix': 'core',
-    'javaVersion': '21',
-    'snykOrganization': 'core',
-    'gitReference': 'master',
-    'mvnArgs': '-s settings.xml',
-    'apmAgent': 'datadog',
-    'environments': [
-      
-      'qa': [
-         'livenessProbe': '90',
-         'enableAutoDeploy': false,
-         'replicaCount': '1',
-         'ingressClassName': 'nginx-new',
-         'keyValueStorePlatform': ' ',
-         'keyValueStoreToken': '',
-         'javaOpts': '-Xmx1024m -javaagent:/datadog/dd-java-agent.jar -Dspring.profiles.active=qa -Dconsul.webservice.host=https://crm-consul-webservice.qa.apps.scholastic.tech -Dhawtio.authenticationEnabled=false',
-         'cpuLimit': '1000m',
-         'keyValueStorePath': '',
-         'readinessProbe': '90',
-         'serviceAccount': 'crm-nonprod-apps-s3',
-         'memoryLimit': '2048Mi',
-         'healthPath': '/actuator/health/application',
-      ]      
-      
-    ]
-  ]
+    environment {
+        // Git repository
+        GIT_URL = 'https://github.com/Sandeepkulkarnib/pftrust-ui'
 
-  pipelineConfigs['resultedBuildConfig'] = buildJavaApp(pipelineConfigs)
-  deployJavaApp(pipelineConfigs)
+        // Docker and AWS ECR details
+        DOCKER_IMAGE = "pftrust-ui"
+        ECR_REPOSITORY = "662458064500.dkr.ecr.us-east-1.amazonaws.com/pftrust-ui"
+        DOCKER_PORT = "8081:80"
+        DOCKER_CONTAINER_NAME = "pf-trust-ui"
+
+        // Hardcoded AWS Keys (Replace with your keys)
+        AWS_ACCESS_KEY_ID = "AKIAZUPMT3Z2JMCXLD6X"
+        AWS_SECRET_ACCESS_KEY = "CQEewSHuF5hczFF4+jm6N0iDl6MMwrCr0dcRnW0/"
+        AWS_REGION = "us-east-1"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git url: "${GIT_URL}", branch: 'main'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Lint Code') {
+            steps {
+                sh 'npm run lint'
+            }
+        }
+
+        stage('Build Application') {
+            steps {
+                sh 'npm run build'
+            }
+        }
+
+        stage('Login to AWS ECR') {
+            steps {
+                sh """
+                aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
+                aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
+                aws configure set default.region ${AWS_REGION}
+                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
+                """
+            }
+        }
+
+        stage('Build and Push Docker Image') {
+            steps {
+                sh """
+                docker build . -t ${DOCKER_IMAGE}
+                docker tag ${DOCKER_IMAGE} ${ECR_REPOSITORY}:latest
+                docker push ${ECR_REPOSITORY}:latest
+                """
+            }
+        }
+
+        stage('Deploy Application') {
+            steps {
+                sh """
+                docker ps -q --filter "name=${DOCKER_CONTAINER_NAME}" | xargs -r docker stop
+                docker ps -aq --filter "name=${DOCKER_CONTAINER_NAME}" | xargs -r docker rm
+                docker run -d -p ${DOCKER_PORT} --name ${DOCKER_CONTAINER_NAME} ${ECR_REPOSITORY}:latest
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Deployment completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check the logs for details.'
+        }
+    }
 }
