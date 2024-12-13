@@ -5,12 +5,12 @@ pipelineJob('pftrust-ui-test') {
             scm {
                 git {
                     remote {
-                        url('https://github.com/Sandeepkulkarnib/pftrust-ui.git')
+                        url('https://github.com/Sandeepkulkarnib/jenkins-pipelines.git')
                         credentials('github-access') // GitHub credentials
                     }
                     branches('main')
                 }
-                scriptPath('Jenkinsfile') // Path to the Jenkinsfile in the app-a repository
+                scriptPath('pipelines/pftrust_ui_test/Jenkinsfile') // Path to the Jenkinsfile in the app-a repository
             }
         }
     }
