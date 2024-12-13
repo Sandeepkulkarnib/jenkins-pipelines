@@ -1,20 +1,58 @@
 pipeline {
     agent any
+    environment {
+        AWS_REGION = 'ap-south-1' // Update with your AWS region
+        ECR_REPO_URI = '031805916358.dkr.ecr.ap-south-1.amazonaws.com/springboot3-hello-world' // Replace with your ECR URI
+        IMAGE_TAG = "latest" // Use "latest" or a dynamic version tag
+    }
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
                 git branch: 'main', url: 'https://github.com/Sandeepkulkarnib/springboot3-hello-world.git'
             }
         }
-        stage('Build') {
+        stage('Build Application') {
             steps {
                 sh 'mvn clean package'
             }
         }
-        stage('Deploy') {
+        stage('Build Docker Image') {
             steps {
-                echo 'Deploy logic for App-A here'
+                script {
+                    sh 'docker build -t springboot3-hello-world:latest .'
+                }
             }
+        }
+        stage('Login to ECR') {
+            steps {
+                script {
+                    sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI'
+                }
+            }
+        }
+        stage('Tag and Push to ECR') {
+            steps {
+                script {
+                    sh 'docker tag springboot3-hello-world:latest $ECR_REPO_URI:$IMAGE_TAG'
+                    sh 'docker push $ECR_REPO_URI:$IMAGE_TAG'
+                }
+            }
+        }
+        stage('Deploy Container') {
+            steps {
+                script {
+                    sh 'docker stop springboot3-hello-world || true && docker rm springboot3-hello-world || true'
+                    sh 'docker run -d --name springboot3-hello-world -p 8099:8099 $ECR_REPO_URI:$IMAGE_TAG'
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Application successfully pushed to ECR and deployed!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
