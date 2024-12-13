@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Sandeepkulkarnib/pftrust-ui.git'
+                git branch: 'main', url: 'https://github.com/Sandeepkulkarnib/springboot3-hello-world.git'
             }
         }
         stage('Build') {
