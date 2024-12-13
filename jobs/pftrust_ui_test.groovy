@@ -6,7 +6,7 @@ pipelineJob('pftrust-ui-test') {
                 git {
                     remote {
                         url('https://github.com/Sandeepkulkarnib/jenkins-pipelines.git')
-                        credentials('github-access') // GitHub credentials
+                        credentials('${GITHUB_TOKEN}') // GitHub credentials
                     }
                     branches('main')
                 }
