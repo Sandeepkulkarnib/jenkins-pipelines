@@ -1,0 +1,31 @@
+jenkins:
+  systemMessage: "Managed via Configuration as Code (JCasC)"
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: C0r3StrongP@ssw0rd!
+  authorizationStrategy:
+    projectMatrix:
+      permissions:
+        - "Overall/Administer:admin"
+  jobs:
+    - script: |
+        folder('Apps') {
+          displayName('Applications')
+        }
+        multibranchPipelineJob('Apps/pftrust-ui-test') {
+          branchSources {
+            git {
+              id('pftrust-ui-test')
+              remote('https://github.com/Sandeepkulkarnib/pftrust-ui.git')
+              credentialsId('github-access')
+            }
+          }
+          orphanedItemStrategy {
+            discardOldItems {
+              numToKeep(5)
+            }
+          }
+        }
