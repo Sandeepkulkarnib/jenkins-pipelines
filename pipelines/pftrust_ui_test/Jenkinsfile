@@ -42,7 +42,7 @@ pipeline {
             steps {
                 script {
                     sh 'docker stop springboot3-hello-world || true && docker rm springboot3-hello-world || true'
-                    sh 'docker run -d --name springboot3-hello-world -p 8099:8099 $ECR_REPO_URI:$IMAGE_TAG'
+                    sh 'docker run -d --name springboot3-hello-world -p 8099:8080 $ECR_REPO_URI:$IMAGE_TAG'
                 }
             }
         }
