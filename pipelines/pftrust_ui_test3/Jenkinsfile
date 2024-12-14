@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+    environment {
+        AWS_REGION = 'ap-south-1' // Update with your AWS region
+        ECR_REPO_URI = '031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui' // Replace with your ECR URI
+        IMAGE_TAG = "latest" // Use "latest" or a dynamic version tag
+    }
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Sandeepkulkarnib/pftrust-ui'
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Lint Code') {
+            steps {
+                sh 'npm run lint'
+            }
+        }
+
+        stage('Build Application') {
+            steps {
+                sh 'npm run build'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh 'docker build -t pftrust-ui:latest .'
+                }
+            }
+        }
+        stage('Login to ECR') {
+            steps {
+                script {
+                    sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI'
+                }
+            }
+        }
+        stage('Tag and Push to ECR') {
+            steps {
+                script {
+                    sh 'docker tag pftrust-ui:latest $ECR_REPO_URI:$IMAGE_TAG'
+                    sh 'docker push $ECR_REPO_URI:$IMAGE_TAG'
+                }
+            }
+        }
+        stage('Deploy Container') {
+            steps {
+                script {
+                    sh 'docker stop pftrust-ui-test-3 || true && docker rm pftrust-ui-test-3 || true'
+                    sh 'docker run -d --name pftrust-ui-test-3 -p 8088:80 $ECR_REPO_URI:$IMAGE_TAG'
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Application successfully pushed to ECR and deployed!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
