@@ -1,5 +1,5 @@
-pipelineJob('pftrust-ui-test3') {
-    description('pftrust-ui-test3')
+pipelineJob('pftrust-ui-test4') {
+    description('pftrust-ui-test4')
     definition {
         cpsScm {
             scm {
