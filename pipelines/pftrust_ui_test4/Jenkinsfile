@@ -44,7 +44,7 @@ pipeline {
             echo "SonarQube Task ID: ${taskId}"
             
             // Construct and print the URL
-            def sonarUrl = "http://sonar:9000/dashboard?id=pftrust-ui"
+            def sonarUrl = "http://localhost:9000/dashboard?id=pftrust-ui"
             echo "SonarQube Report URL: ${sonarUrl}"
         }
     }
