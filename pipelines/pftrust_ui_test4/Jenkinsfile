@@ -35,6 +35,20 @@ pipeline {
         }
     }
 
+        stage('Print SonarQube Report URL') {
+    steps {
+        script {
+            def props = readFile('target/sonar/report-task.txt') // Reads SonarQube task file
+            def matcher = props =~ /ceTaskId=(.*)/
+            def taskId = matcher[0][1]
+            echo "SonarQube Task ID: ${taskId}"
+            
+            // Construct and print the URL
+            def sonarUrl = "http://sonar:9000/dashboard?id=pftrust-ui"
+            echo "SonarQube Report URL: ${sonarUrl}"
+        }
+    }
+}
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
