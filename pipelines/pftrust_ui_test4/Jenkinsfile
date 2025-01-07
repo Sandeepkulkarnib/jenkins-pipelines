@@ -1,10 +1,14 @@
 pipeline {
     agent any
+
     environment {
         AWS_REGION = 'ap-south-1' // Update with your AWS region
         ECR_REPO_URI = '031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui' // Replace with your ECR URI
         IMAGE_TAG = "latest" // Use "latest" or a dynamic version tag
+        SONAR_HOST_URL = 'http://localhost:9000' // SonarQube server URL
+        SONAR_PROJECT_KEY = 'pftrust-ui' // Replace with your project key in SonarQube
     }
+
     stages {
         stage('Clone Repository') {
             steps {
@@ -12,41 +16,6 @@ pipeline {
             }
         }
 
-    environment {
-        SONAR_TOKEN = credentials('sqa_20a66bc150848791eecbe2d1158f68717a3d8f5e')
-    }
-
-    stages {
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    mvn sonar:sonar \
-                        -Dsonar.projectKey=pftrust-ui \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.login=${SONAR_TOKEN}
-                    '''
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 1, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
-        stage('Print SonarQube Report URL') {
-            steps {
-                script {
-                    def sonarUrl = "http://localhost:9000/dashboard?id=pftrust-ui"
-                    echo "SonarQube Report URL: ${sonarUrl}"
-                }
-            }
-        }
-    }
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
@@ -64,37 +33,83 @@ pipeline {
                 sh 'npm run build'
             }
         }
+
+        stage('SonarQube Analysis') {
+            environment {
+                SONAR_TOKEN = credentials('sonar-access') // Use Jenkins credential ID
+            }
+            steps {
+                withSonarQubeEnv('SonarQube') { // 'SonarQube' should match Jenkins' SonarQube server configuration name
+                    sh '''
+                    mvn sonar:sonar \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=${SONAR_TOKEN}
+                    '''
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Print SonarQube Report URL') {
+            steps {
+                script {
+                    def sonarUrl = "${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+                    echo "SonarQube Report URL: ${sonarUrl}"
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t pftrust-ui:latest .'
+                    sh 'docker build -t pftrust-ui:${IMAGE_TAG} .'
                 }
             }
         }
+
         stage('Login to ECR') {
             steps {
                 script {
-                    sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI'
+                    sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                    docker login --username AWS --password-stdin ${ECR_REPO_URI}
+                    '''
                 }
             }
         }
+
         stage('Tag and Push to ECR') {
             steps {
                 script {
-                    sh 'docker tag pftrust-ui:latest $ECR_REPO_URI:$IMAGE_TAG'
-                    sh 'docker push $ECR_REPO_URI:$IMAGE_TAG'
+                    sh '''
+                    docker tag pftrust-ui:${IMAGE_TAG} ${ECR_REPO_URI}:${IMAGE_TAG}
+                    docker push ${ECR_REPO_URI}:${IMAGE_TAG}
+                    '''
                 }
             }
         }
+
         stage('Deploy Container') {
             steps {
                 script {
-                    sh 'docker stop pftrust-ui-test-3 || true && docker rm pftrust-ui-test-3 || true'
-                    sh 'docker run -d --name pftrust-ui-test-3 -p 8088:80 $ECR_REPO_URI:$IMAGE_TAG'
+                    sh '''
+                    docker stop pftrust-ui-test-3 || true
+                    docker rm pftrust-ui-test-3 || true
+                    docker run -d --name pftrust-ui-test-3 -p 8088:80 ${ECR_REPO_URI}:${IMAGE_TAG}
+                    '''
                 }
             }
         }
     }
+
     post {
         success {
             echo 'Application successfully pushed to ECR and deployed!'
