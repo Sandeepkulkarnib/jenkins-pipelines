@@ -10,7 +10,7 @@ pipelineJob('pftrust-ui-test4') {
                     }
                     branches('main')
                 }
-                scriptPath('pipelines/pftrust_ui_test3/Jenkinsfile') // Path to the Jenkinsfile in the app-a repository
+                scriptPath('pipelines/pftrust_ui_test4/Jenkinsfile') // Path to the Jenkinsfile in the app-a repository
             }
         }
     }
