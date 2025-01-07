@@ -5,7 +5,7 @@ pipeline {
         AWS_REGION = 'ap-south-1'
         ECR_REPO_URI = '031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui'
         IMAGE_TAG = "latest"
-        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_HOST_URL = 'http://3.110.35.227:9000'
         SONAR_PROJECT_KEY = 'pftrust-ui'
     }
 
