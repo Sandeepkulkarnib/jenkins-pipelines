@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'ap-south-1' // Update with your AWS region
-        ECR_REPO_URI = '031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui' // Replace with your ECR URI
-        IMAGE_TAG = "latest" // Use "latest" or a dynamic version tag
-        SONAR_HOST_URL = 'http://localhost:9000' // SonarQube server URL
-        SONAR_PROJECT_KEY = 'pftrust-ui' // Replace with your project key in SonarQube
+        AWS_REGION = 'ap-south-1'
+        ECR_REPO_URI = '031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui'
+        IMAGE_TAG = "latest"
+        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_PROJECT_KEY = 'pftrust-ui'
     }
 
     stages {
@@ -36,13 +36,14 @@ pipeline {
 
         stage('SonarQube Analysis') {
             environment {
-                SONAR_TOKEN = credentials('sonar-access') // Use Jenkins credential ID
+                SONAR_TOKEN = credentials('sonar-access') // Replace with your Jenkins credential ID
             }
             steps {
-                withSonarQubeEnv('SonarQube') { // 'SonarQube' should match Jenkins' SonarQube server configuration name
+                withSonarQubeEnv('SonarQube') {
                     sh '''
-                    mvn sonar:sonar \
+                    sonar-scanner \
                         -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                        -Dsonar.sources=. \
                         -Dsonar.host.url=${SONAR_HOST_URL} \
                         -Dsonar.login=${SONAR_TOKEN}
                     '''
@@ -69,43 +70,35 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh 'docker build -t pftrust-ui:${IMAGE_TAG} .'
-                }
+                sh 'docker build -t pftrust-ui:${IMAGE_TAG} .'
             }
         }
 
         stage('Login to ECR') {
             steps {
-                script {
-                    sh '''
-                    aws ecr get-login-password --region ${AWS_REGION} | \
-                    docker login --username AWS --password-stdin ${ECR_REPO_URI}
-                    '''
-                }
+                sh '''
+                aws ecr get-login-password --region ${AWS_REGION} | \
+                docker login --username AWS --password-stdin ${ECR_REPO_URI}
+                '''
             }
         }
 
         stage('Tag and Push to ECR') {
             steps {
-                script {
-                    sh '''
-                    docker tag pftrust-ui:${IMAGE_TAG} ${ECR_REPO_URI}:${IMAGE_TAG}
-                    docker push ${ECR_REPO_URI}:${IMAGE_TAG}
-                    '''
-                }
+                sh '''
+                docker tag pftrust-ui:${IMAGE_TAG} ${ECR_REPO_URI}:${IMAGE_TAG}
+                docker push ${ECR_REPO_URI}:${IMAGE_TAG}
+                '''
             }
         }
 
         stage('Deploy Container') {
             steps {
-                script {
-                    sh '''
-                    docker stop pftrust-ui-test-3 || true
-                    docker rm pftrust-ui-test-3 || true
-                    docker run -d --name pftrust-ui-test-3 -p 8088:80 ${ECR_REPO_URI}:${IMAGE_TAG}
-                    '''
-                }
+                sh '''
+                docker stop pftrust-ui-test-4 || true
+                docker rm pftrust-ui-test-4 || true
+                docker run -d --name pftrust-ui-test-4 -p 8088:80 ${ECR_REPO_URI}:${IMAGE_TAG}
+                '''
             }
         }
     }
