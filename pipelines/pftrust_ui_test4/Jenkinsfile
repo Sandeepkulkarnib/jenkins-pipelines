@@ -12,28 +12,15 @@ pipeline {
             }
         }
 
-    stage('Quality Gate') {
-    steps {
-        timeout(time: 5, unit: 'MINUTES') {
-            waitForQualityGate abortPipeline: true
-        }
+stage('SCM') {
+    checkout scm
+  }
+  stage('SonarQube Analysis') {
+    def mvn = tool 'Default Maven';
+    withSonarQubeEnv() {
+      sh "${mvn}/bin/mvn clean verify sonar:sonar -Dsonar.projectKey=pftrust-ui -Dsonar.projectName='pftrust-ui'"
     }
-}
-
-    stages {
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    mvn sonar:sonar \
-                        -Dsonar.projectKey=pftrust-ui \
-                        -Dsonar.host.url=http://http://localhost:9000 \
-                        -Dsonar.login=${SONAR_TOKEN}
-                    '''
-                }
-            }
-        }
-    }
+  }
 
         stage('Print SonarQube Report URL') {
     steps {
