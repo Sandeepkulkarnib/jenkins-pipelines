@@ -15,7 +15,7 @@ pipeline {
                 GITHUB_TOKEN = credentials('github-access')
             }
             steps {
-                git branch: 'main', credentialsId: 'github-access', url: 'https://github.com/Sandeepkulkarnib/jenkins-pipelines.git'
+                git branch: 'main', credentials: 'github-access', url: 'https://github.com/Sandeepkulkarnib/jenkins-pipelines.git'
             }
         }
 
