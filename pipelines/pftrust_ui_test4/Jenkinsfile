@@ -11,11 +11,8 @@ pipeline {
 
     stages {
         stage('Clone Repository') {
-            environment {
-                GITHUB_TOKEN = credentialsId('github-access')
-            }
             steps {
-                git branch: 'main', credentialsId: 'github-access', url: 'https://github.com/Sandeepkulkarnib/jenkins-pipelines.git'
+                git branch: 'main', credentialsId: 'github-access', url: 'https://github.com/Sandeepkulkarnib/pftrust-ui'
             }
         }
 
