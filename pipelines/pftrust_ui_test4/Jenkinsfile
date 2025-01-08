@@ -8,7 +8,9 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git credentialsId: 'github-access', url: 'https://github.com/Sandeepkulkarnib/jenkins-pipelines.git'
+                withCredentials([string(credentialsId: 'github-access', variable: 'GITHUB_TOKEN')]) {
+                    git branch: 'main', url: "https://github.com/Sandeepkulkarnib/jenkins-pipelines.git"
+                }
             }
         }
 
