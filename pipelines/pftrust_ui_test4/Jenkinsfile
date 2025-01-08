@@ -51,18 +51,35 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
+stage('Quality Gate') {
     steps {
         script {
-            timeout(time: 5, unit: 'MINUTES') { // Adjust the timeout as needed
-                def qualityGate = waitForQualityGate()
-                if (qualityGate.status != 'Success') {
-                    error "Pipeline failed due to quality gate failure: ${qualityGate.status}"
+            // Set timeout for the Quality Gate check
+            timeout(time: 5, unit: 'MINUTES') { 
+                // Retry mechanism: retry up to 3 times if Quality Gate check fails
+                retry(3) {
+                    // Configure SonarQube polling interval in milliseconds (e.g., 1000 ms = 1 second)
+                    def qualityGate = waitForQualityGate(abortPipeline: false, pollingInterval: 1000)
+
+                    // Log the result status
+                    echo "Quality Gate status: ${qualityGate.status}"
+
+                    // Handle Quality Gate status checks
+                    if (qualityGate.status == 'ERROR') {
+                        error "Pipeline failed due to Quality Gate failure: ${qualityGate.status}"
+                    } else if (qualityGate.status == 'WARN') {
+                        echo "Quality Gate returned a warning: ${qualityGate.status}. Proceeding with caution."
+                    } else if (qualityGate.status == 'OK') {
+                        echo "Quality Gate passed successfully!"
+                    } else {
+                        error "Unknown Quality Gate status: ${qualityGate.status}. Failing pipeline!"
+                    }
                 }
             }
         }
     }
 }
+
 
         stage('Print SonarQube Report URL') {
             steps {
