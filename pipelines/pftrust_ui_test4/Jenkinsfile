@@ -54,12 +54,11 @@ pipeline {
 stage('Quality Gate') {
     steps {
         script {
-            retry(5) { // Retry 3 times in case of failure
-                timeout(time: 1, unit: 'MINUTES') { // Timeout in 5 minutes
+            retry(2) { 
+                timeout(time: 1, unit: 'MINUTES') {
                     def qualityGate
                     while (true) {
-                        // Polling status manually every 5 seconds
-                        sleep(5) // Adjust polling interval (in seconds)
+                        sleep(20)
                         qualityGate = waitForQualityGate()
                         if (qualityGate.status == 'SUCCESS') {
                             echo "Quality Gate PASSED"
