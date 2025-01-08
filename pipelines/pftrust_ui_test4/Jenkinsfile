@@ -16,17 +16,16 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh '''
-                export NVM_DIR="$HOME/.nvm"
-                [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-                nvm install 16
-                nvm use 16
-                npm install
-                '''
+                sh 'npm install'
             }
         }
-
-
+        
+        stage('Lint Code') {
+            steps {
+                sh 'npm run lint'
+            }
+        }
+        
         stage('Audit Dependencies') {
             steps {
                 sh 'npm audit fix || true'
