@@ -54,18 +54,17 @@ pipeline {
 stage('Quality Gate') {
     steps {
         script {
-            retry(2) { 
-                timeout(time: 1, unit: 'MINUTES') {
-                    def qualityGate
-                    while (true) {
-                        sleep(20)
-                        qualityGate = waitForQualityGate()
-                        if (qualityGate.status == 'SUCCESS') {
-                            echo "Quality Gate PASSED"
-                            break
-                        } else if (qualityGate.status == 'FAILED') {
-                            error "Pipeline failed due to quality gate failure: ${qualityGate.status}"
-                        }
+            retry(3) {
+                timeout(time: 2, unit: 'MINUTES') {
+                    def qualityGate = waitForQualityGate()
+                    echo "SonarQube Quality Gate Status: ${qualityGate.status}"
+                    
+                    if (qualityGate.status == 'OK') {
+                        echo "Quality Gate PASSED"
+                    } else if (qualityGate.status == 'ERROR') {
+                        error "Quality Gate FAILED with status: ${qualityGate.status}"
+                    } else {
+                        error "Quality Gate returned UNKNOWN status: ${qualityGate.status}"
                     }
                 }
             }
