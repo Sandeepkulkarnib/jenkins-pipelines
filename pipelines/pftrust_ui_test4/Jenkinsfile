@@ -11,10 +11,12 @@ pipeline {
 
     stages {
         stage('Clone Repository') {
+            environment {
+                GITHUB_TOKEN = credentials('github-access')
+            }
             steps {
                 script {
-                    def githubToken = credentials('github-access')
-                    sh "git clone https://${githubToken}@github.com/Sandeepkulkarnib/pftrust-ui.git"
+                    sh "git clone https://${GITHUB_TOKEN}@github.com/Sandeepkulkarnib/pftrust-ui.git"
                 }
             }
         }
