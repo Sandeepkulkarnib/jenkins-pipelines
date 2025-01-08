@@ -4,23 +4,15 @@ pipeline {
     environment {
         AWS_REGION = 'ap-south-1'
         ECR_REPO_URI = '031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui'
-        IMAGE_TAG = "${GIT_COMMIT}"
+        IMAGE_TAG = "latest"
         SONAR_HOST_URL = 'http://3.110.35.227:9000'
         SONAR_PROJECT_KEY = 'pftrust-ui'
     }
 
     stages {
         stage('Clone Repository') {
-            environment {
-                GITHUB_TOKEN = credentials('github-access')
-            }
             steps {
-                script {
-                    sh "git clone https://${GITHUB_TOKEN}@github.com/Sandeepkulkarnib/pftrust-ui.git"
-                    dir('pftrust-ui') {
-                    sh 'npm install'
-                    }
-                }
+                git branch: 'main', url: 'https://github.com/Sandeepkulkarnib/pftrust-ui'
             }
         }
 
@@ -44,7 +36,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             environment {
-                SONAR_TOKEN = credentials('sonar-access')
+                SONAR_TOKEN = credentials('sonar-access') // Replace with your Jenkins credential ID
             }
             steps {
                 withSonarQubeEnv('SonarQube') {
@@ -59,26 +51,27 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
-            steps {
-                script {
-                    retry(3) {
-                        timeout(time: 2, unit: 'MINUTES') {
-                            def qualityGate = waitForQualityGate()
-                            echo "SonarQube Quality Gate Status: ${qualityGate.status}"
-                            
-                            if (qualityGate.status == 'OK') {
-                                echo "Quality Gate PASSED"
-                            } else if (qualityGate.status == 'ERROR') {
-                                error "Quality Gate FAILED with status: ${qualityGate.status}"
-                            } else {
-                                error "Quality Gate returned UNKNOWN status: ${qualityGate.status}"
-                            }
-                        }
+stage('Quality Gate') {
+    steps {
+        script {
+            retry(3) {
+                timeout(time: 2, unit: 'MINUTES') {
+                    def qualityGate = waitForQualityGate()
+                    echo "SonarQube Quality Gate Status: ${qualityGate.status}"
+                    
+                    if (qualityGate.status == 'OK') {
+                        echo "Quality Gate PASSED"
+                    } else if (qualityGate.status == 'ERROR') {
+                        error "Quality Gate FAILED with status: ${qualityGate.status}"
+                    } else {
+                        error "Quality Gate returned UNKNOWN status: ${qualityGate.status}"
                     }
                 }
             }
         }
+    }
+}
+
 
         stage('Print SonarQube Report URL') {
             steps {
@@ -91,9 +84,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh 'docker build --cache-from ${ECR_REPO_URI}:${IMAGE_TAG} -t pftrust-ui:${IMAGE_TAG} .'
-                }
+                sh 'docker build -t pftrust-ui:${IMAGE_TAG} .'
             }
         }
 
