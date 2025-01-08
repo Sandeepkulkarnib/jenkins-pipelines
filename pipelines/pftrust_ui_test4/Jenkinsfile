@@ -45,19 +45,20 @@ pipeline {
                         -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                         -Dsonar.sources=. \
                         -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.login=${SONAR_TOKEN}
+                        -Dsonar.token=${SONAR_TOKEN}
                     '''
                 }
             }
         }
 
         stage('Quality Gate') {
-            steps {
-                timeout(time: 60, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
+    timeout(time: 5, unit: 'MINUTES') {
+        def qualityGate = waitForQualityGate()
+        if (qualityGate.status != 'OK') {
+            error "Pipeline failed due to quality gate failure: ${qualityGate.status}"
         }
+    }
+}
 
         stage('Print SonarQube Report URL') {
             steps {
