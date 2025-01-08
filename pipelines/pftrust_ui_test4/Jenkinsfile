@@ -17,6 +17,9 @@ pipeline {
             steps {
                 script {
                     sh "git clone https://${GITHUB_TOKEN}@github.com/Sandeepkulkarnib/pftrust-ui.git"
+                    dir('pftrust-ui') {
+                    sh 'npm install'
+                    }
                 }
             }
         }
