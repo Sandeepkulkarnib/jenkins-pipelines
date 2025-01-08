@@ -2,14 +2,19 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_TOKEN = credentials('github-access')  // Pull GitHub token securely
+        AWS_REGION = 'ap-south-1'
+        ECR_REPO_URI = '031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui'
+        IMAGE_TAG = "${GIT_COMMIT}"
+        SONAR_HOST_URL = 'http://3.110.35.227:9000'
+        SONAR_PROJECT_KEY = 'pftrust-ui'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                withCredentials([string(credentialsId: 'github-access', variable: 'GITHUB_TOKEN')]) {
-                    git branch: 'main', url: "https://github.com/Sandeepkulkarnib/jenkins-pipelines.git"
+                script {
+                    def githubToken = credentials('github-access')
+                    sh "git clone https://${githubToken}@github.com/Sandeepkulkarnib/pftrust-ui.git"
                 }
             }
         }
@@ -19,63 +24,88 @@ pipeline {
                 sh 'npm install'
             }
         }
-        
+
         stage('Lint Code') {
             steps {
                 sh 'npm run lint'
-            }
-        }
-        
-        stage('Audit Dependencies') {
-            steps {
-                sh 'npm audit fix || true'
             }
         }
 
         stage('Build Application') {
             steps {
                 sh 'npm run build'
-                sh 'npx browserslist@latest --update-db'
             }
         }
 
         stage('SonarQube Analysis') {
+            environment {
+                SONAR_TOKEN = credentials('sonar-access')
+            }
             steps {
-                // Use Jenkins credentials for SONAR_TOKEN securely
-                withCredentials([string(credentialsId: 'sonar-access', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('SonarQube') {
-                        sh '''
-                        sonar-scanner \
-                          -Dsonar.projectKey=pftrust-ui \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=http://3.110.35.227:9000 \
-                          -Dsonar.token=$SONAR_TOKEN
-                        '''
-                    }
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    sonar-scanner \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.token=${SONAR_TOKEN}
+                    '''
                 }
             }
         }
 
         stage('Quality Gate') {
             steps {
-                timeout(time: 2, unit: 'MINUTES') {
-                    script {
-                        def qualityGate = waitForQualityGate(abortPipeline: true)
-                        if (qualityGate.status != 'OK') {
-                            error "Pipeline aborted due to Quality Gate failure: ${qualityGate.status}"
+                script {
+                    retry(3) {
+                        timeout(time: 2, unit: 'MINUTES') {
+                            def qualityGate = waitForQualityGate()
+                            echo "SonarQube Quality Gate Status: ${qualityGate.status}"
+                            
+                            if (qualityGate.status == 'OK') {
+                                echo "Quality Gate PASSED"
+                            } else if (qualityGate.status == 'ERROR') {
+                                error "Quality Gate FAILED with status: ${qualityGate.status}"
+                            } else {
+                                error "Quality Gate returned UNKNOWN status: ${qualityGate.status}"
+                            }
                         }
                     }
                 }
             }
         }
 
+        stage('Print SonarQube Report URL') {
+            steps {
+                script {
+                    def sonarUrl = "${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+                    echo "SonarQube Report URL: ${sonarUrl}"
+                }
+            }
+        }
 
-        stage('Docker Build & Push') {
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh 'docker build --cache-from ${ECR_REPO_URI}:${IMAGE_TAG} -t pftrust-ui:${IMAGE_TAG} .'
+                }
+            }
+        }
+
+        stage('Login to ECR') {
             steps {
                 sh '''
-                docker build -t pftrust-ui:latest .
-                docker tag pftrust-ui:latest 031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui:latest
-                docker push 031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui:latest
+                aws ecr get-login-password --region ${AWS_REGION} | \
+                docker login --username AWS --password-stdin ${ECR_REPO_URI}
+                '''
+            }
+        }
+
+        stage('Tag and Push to ECR') {
+            steps {
+                sh '''
+                docker tag pftrust-ui:${IMAGE_TAG} ${ECR_REPO_URI}:${IMAGE_TAG}
+                docker push ${ECR_REPO_URI}:${IMAGE_TAG}
                 '''
             }
         }
@@ -83,8 +113,9 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 sh '''
-                docker ps -q --filter "name=pftrust-ui-test-4" | grep -q . && docker stop pftrust-ui-test-4 && docker rm pftrust-ui-test-4 || true
-                docker run -d --name pftrust-ui-test-4 -p 8088:80 031805916358.dkr.ecr.ap-south-1.amazonaws.com/pftrust-ui:latest
+                docker stop pftrust-ui-test-4 || true
+                docker rm pftrust-ui-test-4 || true
+                docker run -d --name pftrust-ui-test-4 -p 8088:80 ${ECR_REPO_URI}:${IMAGE_TAG}
                 '''
             }
         }
@@ -95,7 +126,7 @@ pipeline {
             echo 'Application successfully pushed to ECR and deployed!'
         }
         failure {
-            echo 'Pipeline failed. Please check logs for details.'
+            echo 'Pipeline failed!'
         }
     }
 }
